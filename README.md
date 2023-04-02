@@ -42,7 +42,7 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
   Pattern: `GET <key>`    
   
   #### - Use the Command of the form ->   
-``` curl -X GET -H "Content-Type: application/json" -d '{"command": "GET hello world"}' http://localhost:8080 ``` 
+``` curl -X GET -H "Content-Type: application/json" -d '{"command": "GET hello"}' http://localhost:8080 ``` 
 
   ---
 
