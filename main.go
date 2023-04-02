@@ -20,7 +20,7 @@ type Command struct {
 
 func main() {
 	myStore := &kvs.KeyValueStore{
-		Store: make(map[string][]*kvs.KeyValueItem),
+		Store: make(map[string]*kvs.QueueChannel),
 	}
 
 	fmt.Println("Starting server...")

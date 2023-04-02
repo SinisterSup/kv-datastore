@@ -8,7 +8,7 @@ import (
 
 type KeyValueStore struct {
 	mu    sync.Mutex
-	Store map[string][]*KeyValueItem
+	Store map[string]*QueueChannel
 }
 
 type KeyValueItem struct {
@@ -16,7 +16,12 @@ type KeyValueItem struct {
 	expiration *time.Time
 }
 
-func (s *KeyValueStore) Set(key, value string, expiration int, condition string) (bool) {
+type QueueChannel struct {
+	queue []*KeyValueItem
+	channel chan string
+}
+
+func (s *KeyValueStore) Set(key, value string, expiration int, condition string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -33,7 +38,10 @@ func (s *KeyValueStore) Set(key, value string, expiration int, condition string)
 	}
 
 	exp := time.Now().Add(time.Duration(expiration) * time.Second)
-	s.Store[key] = []*KeyValueItem{{value: value, expiration: &exp}}
+	s.Store[key] = &QueueChannel{
+		queue:   []*KeyValueItem{{value: value, expiration: &exp}},
+		channel: make(chan string, 25),
+	}
 
 	return true
 }
@@ -48,33 +56,43 @@ func (s *KeyValueStore) Get(key string) (string, bool) {
 		return "", false
 	}
 
-	if item[0].expiration != nil && time.Now().After(*item[0].expiration) {
+	if item.queue[0].expiration != nil && time.Now().After(*item.queue[0].expiration) {
 		delete(s.Store, key)
 		return "", false
 	}
 
-	return item[0].value, true
+	return item.queue[0].value, true
 }
 
 func (s *KeyValueStore) Qpush(key string, values []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var valItems []*KeyValueItem
-
 	for _, val := range values {
-		valItems = append(valItems, &KeyValueItem{value: val, expiration: nil})
-	}
+		exp := time.Now().Add(24 * time.Hour)
+		item := &KeyValueItem{value: val, expiration: &exp}
 
-	if _, exists := s.Store[key]; exists {
-		s.Store[key] = append(s.Store[key], valItems...)
-	} else {
-		s.Store[key] = valItems
+		if _, exists := s.Store[key]; exists {
+			select {
+				case s.Store[key].channel <- val: // send the value to the channel
+					s.Store[key].queue = append(s.Store[key].queue, item)
+				default:
+					s.Store[key].queue = append(s.Store[key].queue, item)
+			}
+		} else {
+			channel := make(chan string, 3)
+			s.Store[key] = &QueueChannel{
+				queue:   []*KeyValueItem{item},
+				channel: channel,
+			}
+			select {
+				case s.Store[key].channel <- val: // send the value to the channel
+					s.Store[key].queue = append(s.Store[key].queue, item)
+				default:
+					s.Store[key].queue = append(s.Store[key].queue, item)
+			}
+		}
 	}
-	
-	// To notify waiting threads that new items have been added to the queue.
-	itemCond := sync.NewCond(&s.mu)
-	itemCond.Broadcast()
 
 	return nil
 }
@@ -84,17 +102,18 @@ func (s *KeyValueStore) Qpop(key string) (string, bool) {
 	defer s.mu.Unlock()
 
 	item, exists := s.Store[key]
-	n := len(item)
 
 	if !exists {
 		return "key not found", false
 	}
+
+	n := len(item.queue)
 	if n == 0 {
 		return "queue is empty", false
 	}
 
-	val := item[n-1].value
-	s.Store[key] = item[:n-1]
+	val := item.queue[n-1].value
+	item.queue = item.queue[:n-1]
 
 	return val, true
 }
@@ -105,27 +124,32 @@ func (s *KeyValueStore) Bqpop(key string, timeout time.Duration) (string, bool) 
 
 	item, exists := s.Store[key]
 
-	if !exists {
-		return "key not found", false
+	if timeout == 0 { // Check if timeout is 0
+		return s.Qpop(key)
 	}
 
-	startTime := time.Now()
-	for {
-		if len(item) > 0 {
-			return s.Qpop(key)
-		}
-		if timeout == 0 {
-			return "", true
-		}
+	// Create a timer for the given timeout duration
+	timer := time.NewTimer(timeout)
 
-		// To wait for new items to be added to the queue.
-		itemCond := sync.NewCond(&s.mu)
-		itemCond.Wait()
-
-		if time.Since(startTime) >= timeout {
-			return "", true
+	// Wait for either a value to be pushed to the channel or the timer to expire
+	select {
+	case val := <-item.channel: // If a value was pushed to the channel, pop it
+		return val, true
+	case <-timer.C: // If the timer expired, pop the next value in the queue
+		if !exists {
+			return "key not found", false
 		}
-	}	
+		n := len(item.queue)
+		if n == 0 {
+			return "queue is empty", false
+		}
+		val := item.queue[n-1].value
+		item.queue = item.queue[:n-1]
+		return val, true
+	default:
+		time.Sleep(time.Millisecond * 100)
+	}
+	return "", false
 }
 
 func (s *KeyValueStore) StartCleanupLoop(intervalSeconds int) {
@@ -134,7 +158,7 @@ func (s *KeyValueStore) StartCleanupLoop(intervalSeconds int) {
 		<-ticker.C
 		s.mu.Lock()
 		for key, item := range s.Store {
-			if item[0].expiration != nil && time.Now().After(*item[0].expiration) {
+			if item.queue[0].expiration != nil && time.Now().After(*item.queue[0].expiration) {
 				delete(s.Store, key)
 			}
 		} 
