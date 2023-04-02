@@ -7,6 +7,8 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
 - Uses JSON encoding for requests and responses.
 - Uses appropriate HTTP status codes for responses.
 
+----
+
 ## Operations that are Implemented are:
 
 ### 1. SET :
@@ -32,8 +34,8 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
    
   #### - Use the Command of the form ->   
 ``` curl -X POST -H "Content-Type: application/json" -d '{"command": "SET hello world"}' http://localhost:8080 ``` 
-      
-<br />
+
+  ---
 
 ### 2. GET :    
   Returns the value stored using the specified key.   
@@ -42,7 +44,7 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
   #### - Use the Command of the form ->   
 ``` curl -X GET -H "Content-Type: application/json" -d '{"command": "GET hello world"}' http://localhost:8080 ``` 
 
-<br />
+  ---
 
 ### 3. QPUSH :    
   Creates a queue if not already created and appends values to it.    
@@ -57,7 +59,7 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
   #### - Use the Command of the form ->   
 ```curl -X POST -H "Content-Type: application/json" -d '{"command":"QPUSH list_a a hello bella ciao"}' http://localhost:8080/``` 
 
-<br />
+  ---
      
 ### 4. QPOP :    
   Returns the last inserted value from the queue.    
@@ -70,7 +72,7 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
   #### - Use the Command of the form ->   
 ```curl -X GET -H "Content-Type: application/json" -d '{"command": "QPOP list_a"}' http://localhost:8080```
 
-<br />
+  ---
 
 ### 5. BQPOP :
   Blocking queue read operation that blocks the thread until a value is read from the queue.    
@@ -87,3 +89,17 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
    
   #### - Use the Command of the form ->   
 ```curl -X GET -H "Content-Type: application/json" -d '{"command": "BQPOP list_a 0"}' http://localhost:8080```
+
+
+----------------------------
+
+### To Execute:- 
+- Download or clone the repo    
+- In the main directory (here named as kv-datastore) run the command --> ` go run main.go `    
+(I'm assuming you have go installed on your machine and GOROOT, GOPATH variables are well managed and set.)
+- Now open up a new Terminal to Test the APIs with the use of `"curl"` commands as I've suggested. 
+
+#### Please do raise an Issue if there is something I've missed out for. It would really help me out understand my mistakes!
+
+# Thank You
+
