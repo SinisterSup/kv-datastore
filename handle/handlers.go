@@ -16,7 +16,7 @@ func SetHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
 	n := len(parts)
 
 	if n < 2 || n > 5 {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid number of arguments for set"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "invalid number of arguments for set"})
 	}
 
 	key, value := parts[0], parts[1]
@@ -59,7 +59,7 @@ func GetHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
 	n := len(parts)
 
 	if n != 1 {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid number of arguments for get"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "invalid number of arguments for get"})
 	}
 
 	key := parts[0]
@@ -75,7 +75,7 @@ func QpushHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
 	n := len(parts)
 
 	if n < 2 {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid number of arguments for qpush"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "invalid number of arguments for qpush"})
 	}
 
 	key := parts[0]
@@ -92,7 +92,7 @@ func QpopHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
 	n := len(parts)
 
 	if n != 1 {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid number of arguments for qpop"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "invalid number of arguments for qpop"})
 	}
 
 	key := parts[0]
@@ -108,7 +108,7 @@ func BqpopHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
   n := len(parts)
 
   if n != 2 {
-    c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid number of arguments for bqpop"})
+    c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "invalid number of arguments for bqpop"})
   }
 
   key := parts[0]
