@@ -32,8 +32,8 @@ func main() {
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+
 		theCommand := strings.Trim(cmd.Cmnd, " ")
-		theCommand = strings.Trim(theCommand, "\n")
 		cmdParts := strings.Split(theCommand, " ")
 		operation := cmdParts[0]
 
@@ -54,7 +54,6 @@ func main() {
 		}
 
 		theCommand := strings.Trim(getcmd.Cmnd, " ")
-		theCommand = strings.Trim(theCommand, "\n")
 		cmdParts := strings.Split(theCommand, " ")
 		operation := cmdParts[0]
 
