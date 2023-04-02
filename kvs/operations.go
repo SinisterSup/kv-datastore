@@ -20,7 +20,7 @@ func (s *KeyValueStore) Set(key, value string, expiration int, condition string)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	item, exists := s.Store[key]
+	_, exists := s.Store[key]
 
 	if strings.EqualFold(condition, "NX") {
 		if exists {
@@ -32,12 +32,8 @@ func (s *KeyValueStore) Set(key, value string, expiration int, condition string)
 		}
 	}
 
-	if exists && item[0].expiration != nil {
-		*item[0].expiration = time.Now().Add(time.Duration(expiration) * time.Second)
-	} else {
-		exp := time.Now().Add(time.Duration(expiration) * time.Second)
-		s.Store[key] = []*KeyValueItem{{value: value, expiration: &exp}}
-	}
+	exp := time.Now().Add(time.Duration(expiration) * time.Second)
+	s.Store[key] = []*KeyValueItem{{value: value, expiration: &exp}}
 
 	return true
 }
