@@ -120,11 +120,11 @@ func (s *KeyValueStore) Qpop(key string) (string, bool) {
 
 func (s *KeyValueStore) Bqpop(key string, timeout time.Duration) (string) {
 	s.mu.Lock()
-	item, exists := s.Store[key]
 
 	resultChan := make(chan string, 1)
-	go func(key string, item *QueueChannel) {
+	go func(key string) {
 		time.Sleep(timeout)
+		item, exists := s.Store[key]
 
 		if !exists {
 			resultChan <- "" // "key not found
@@ -151,7 +151,7 @@ func (s *KeyValueStore) Bqpop(key string, timeout time.Duration) (string) {
 				resultChan <- val
 				return
 		}
-	}(key, item)
+	}(key)
 
 	s.mu.Unlock()	
 	
