@@ -7,6 +7,7 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
 - Uses JSON encoding for requests and responses.
 - Uses appropriate HTTP status codes for responses.
 
+##### For detailed explanation with examples - refer [this](https://github.com/SinisterSup/kv-datastore/blob/main/Project%20details.pdf)
 ----
 
 ## Operations that are Implemented are:
@@ -57,7 +58,7 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
   Variadic input that receives multiple values separated by space.    
 
   #### - Use the Command of the form ->   
-```curl -X POST -H "Content-Type: application/json" -d '{"command":"QPUSH list_a a hello bella ciao"}' http://localhost:8080/``` 
+```curl -X POST -H "Content-Type: application/json" -d '{"command":"QPUSH list_a a hola bella ciao"}' http://localhost:8080/``` 
 
   ---
      
@@ -99,7 +100,7 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
 (I'm assuming you have go installed on your machine and GOROOT, GOPATH variables are well managed and set.)
 - Now open up a new Terminal to Test the APIs with the use of `"curl"` commands as I've suggested. 
 
-#### Please do raise an Issue if there is something I've missed out for. It would really help me out understand my mistakes!
+#### Please feel free to raise an Issue if there is something I've missed out for. It would really help me out understand my mistakes!
 
 # Thank You
 
