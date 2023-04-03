@@ -80,14 +80,14 @@ func (s *KeyValueStore) Qpush(key string, values []string) error {
 					s.Store[key].queue = append(s.Store[key].queue, item)
 			}
 		} else {
-			channel := make(chan string, 3)
+			channel := make(chan string, 25)
 			s.Store[key] = &QueueChannel{
 				queue:   []*KeyValueItem{item},
 				channel: channel,
 			}
 			select {
 				case s.Store[key].channel <- val: // send the value to the channel
-					s.Store[key].queue = append(s.Store[key].queue, item)
+					// s.Store[key].queue = append(s.Store[key].queue, item)
 				default:
 					s.Store[key].queue = append(s.Store[key].queue, item)
 			}
@@ -118,39 +118,48 @@ func (s *KeyValueStore) Qpop(key string) (string, bool) {
 	return val, true
 }
 
-func (s *KeyValueStore) Bqpop(key string, timeout time.Duration) (string, bool) {
+func (s *KeyValueStore) Bqpop(key string, timeout time.Duration) (string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	item, exists := s.Store[key]
 
-	if timeout == 0 { // Check if timeout is 0
-		return s.Qpop(key)
-	}
+	resultChan := make(chan string, 1)
+	go func(key string, item *QueueChannel) {
+		time.Sleep(timeout)
 
-	// Create a timer for the given timeout duration
-	timer := time.NewTimer(timeout)
-
-	// Wait for either a value to be pushed to the channel or the timer to expire
-	select {
-	case val := <-item.channel: // If a value was pushed to the channel, pop it
-		return val, true
-	case <-timer.C: // If the timer expired, pop the next value in the queue
 		if !exists {
-			return "key not found", false
+			resultChan <- "" // "key not found
+			return
 		}
+
 		n := len(item.queue)
 		if n == 0 {
-			return "queue is empty", false
+			resultChan <- "" // "queue is empty"
+			return 
 		}
-		val := item.queue[n-1].value
-		item.queue = item.queue[:n-1]
-		return val, true
-	default:
-		time.Sleep(time.Millisecond * 100)
-	}
-	return "", false
+
+		select {
+			case val := <-item.channel:
+				item.queue = item.queue[1:]   // If you wanna pop from front of the queue, use this line
+				// item.queue = item.queue[:n-1] // If you wanna pop from back of the queue, use this line
+				resultChan <- val
+				return
+			default:
+				val := item.queue[0].value // If you wanna pop from front of the queue, use this line
+				item.queue = item.queue[1:]
+			// val := item.queue[n-1].value  // If you wanna pop from back of the queue, use this line
+			// item.queue = item.queue[:n-1]
+				resultChan <- val
+				return
+		}
+	}(key, item)
+
+	s.mu.Unlock()	
+	
+	popVal := <- resultChan
+	return popVal
+
 }
+
 
 func (s *KeyValueStore) StartCleanupLoop(intervalSeconds int) {
 	ticker := time.NewTicker(time.Duration(intervalSeconds) * time.Second)

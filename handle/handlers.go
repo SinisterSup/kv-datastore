@@ -112,21 +112,18 @@ func BqpopHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
   }
 
   key := parts[0]
-  t, err := strconv.Atoi(parts[1])
+  t, err := strconv.ParseFloat(parts[1], 64)
   if err != nil {
     c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid timeout request"})
   }
-  timeout := convIntToTime(t)
+  timeout := convFloatToTime(t)
   
-  val, ok := kvs.Bqpop(key, timeout)
-  if !ok {
-    c.IndentedJSON(http.StatusNotFound, gin.H{"error": val})
-  } else {
-    c.IndentedJSON(http.StatusOK, gin.H{"value": val})
-  }
+  val := kvs.Bqpop(key, timeout)
+  c.IndentedJSON(http.StatusOK, gin.H{"value": val})
+
 }
 
-func convIntToTime(t1 int) (time.Duration) {
+func convFloatToTime(t1 float64) (time.Duration) {
   timeout := time.Duration(t1) * time.Second
   return timeout
   // unixTime := time.Unix(0, future.UnixNano())
