@@ -7,7 +7,6 @@ This is an in-memory Key-Value DataStore that performs operations on it based on
 - Uses JSON encoding for requests and responses.
 - Uses appropriate HTTP status codes for responses.
 
-##### For detailed explanation with examples - refer [this](https://github.com/SinisterSup/kv-datastore/blob/main/Project%20details.pdf)
 ----
 
 ## Operations that are Implemented are:
