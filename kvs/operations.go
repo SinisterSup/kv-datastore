@@ -51,7 +51,6 @@ func (s *KeyValueStore) Get(key string) (string, bool) {
 	defer s.mu.Unlock()
 
 	item, exists := s.Store[key]
-
 	if !exists {
 		return "", false
 	}
@@ -102,11 +101,9 @@ func (s *KeyValueStore) Qpop(key string) (string, bool) {
 	defer s.mu.Unlock()
 
 	item, exists := s.Store[key]
-
 	if !exists {
 		return "key not found", false
 	}
-
 	n := len(item.queue)
 	if n == 0 {
 		return "queue is empty", false
@@ -157,20 +154,19 @@ func (s *KeyValueStore) Bqpop(key string, timeout time.Duration) (string) {
 	
 	popVal := <- resultChan
 	return popVal
-
 }
 
 
-func (s *KeyValueStore) StartCleanupLoop(intervalSeconds int) {
-	ticker := time.NewTicker(time.Duration(intervalSeconds) * time.Second)
-	for {
-		<-ticker.C
-		s.mu.Lock()
-		for key, item := range s.Store {
-			if item.queue[0].expiration != nil && time.Now().After(*item.queue[0].expiration) {
-				delete(s.Store, key)
-			}
-		} 
-		s.mu.Unlock()
-	}
-}
+// func (s *KeyValueStore) StartCleanupLoop(intervalSeconds int) {
+// 	ticker := time.NewTicker(time.Duration(intervalSeconds) * time.Second)
+// 	for {
+// 		<-ticker.C
+// 		s.mu.Lock()
+// 		for key, item := range s.Store {
+// 			if item.queue[0].expiration != nil && time.Now().After(*item.queue[0].expiration) {
+// 				delete(s.Store, key)
+// 			}
+// 		} 
+// 		s.mu.Unlock()
+// 	}
+// }
