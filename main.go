@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-
 	// "strconv"
 	// "sync"
 	// "time"
@@ -16,6 +15,14 @@ import (
 
 type Command struct {
 	Cmnd string `json:"command"`
+}
+
+func ParseCommand(cmd string) (string, []string) {
+	theCommand := strings.Trim(cmd, " ")
+	cmdParts := strings.Split(theCommand, " ")
+	operation := cmdParts[0]
+	contents := cmdParts[1:]
+	return operation, contents
 }
 
 func main() {
@@ -32,19 +39,42 @@ func main() {
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		operation, contents := ParseCommand(cmd.Cmnd)
 
-		theCommand := strings.Trim(cmd.Cmnd, " ")
-		cmdParts := strings.Split(theCommand, " ")
-		operation := cmdParts[0]
+		switch operation {
+		case "SET": 
+			message, done, err := handle.SetHandler(contents, myStore)
+			if err != nil {
+				if done {
+					c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				} else {
+					c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				}
+				return 
+			}
+			if done {
+				c.IndentedJSON(http.StatusOK, gin.H{"message": message})
+			} else {
+				c.IndentedJSON(http.StatusNotModified, gin.H{"message": message})
+			}
 
-		if operation == "SET" {
-			handle.SetHandler(cmdParts[1:], myStore, c)
-		} else if operation == "QPUSH" {
-			handle.QpushHandler(cmdParts[1:], myStore, c)
-		} else {
+		case "QPUSH": 
+			message, done, err := handle.QpushHandler(contents, myStore)
+			if err != nil {
+				if done {
+					c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				} else {
+					c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				}
+				return 
+			}
+			c.IndentedJSON(http.StatusOK, gin.H{"message": message})
+
+		default:
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid command"})
 		}
 	})
+
 
 	router.GET("/", func(c *gin.Context) { 
 		var getcmd Command
@@ -52,23 +82,50 @@ func main() {
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-
-		theCommand := strings.Trim(getcmd.Cmnd, " ")
-		cmdParts := strings.Split(theCommand, " ")
-		operation := cmdParts[0]
+		operation, contents := ParseCommand(getcmd.Cmnd)
 
 		switch operation {
 		case "GET":
-			handle.GetHandler(cmdParts[1:], myStore, c)
+			val, done, err := handle.GetHandler(contents, myStore)
+			if err != nil {
+				if done {
+					c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				} else {
+					c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				}
+				return 
+			}
+			c.IndentedJSON(http.StatusOK, gin.H{"value": val})
+
 		case "QPOP":
-			handle.QpopHandler(cmdParts[1:], myStore, c)
+			val, done, err := handle.QpopHandler(contents, myStore)
+			if err != nil {
+				if done {
+					c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				} else {
+					c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				}
+				return
+			}
+			c.IndentedJSON(http.StatusOK, gin.H{"value": val})
+
 		case "BQPOP":
-			handle.BqpopHandler(cmdParts[1:], myStore, c)
+			val, done, err := handle.BqpopHandler(contents, myStore)
+			if err != nil {
+				if done {
+					c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				} else {
+					c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				}
+				return
+			}
+			c.IndentedJSON(http.StatusOK, gin.H{"value": val})
+
 		default:	
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid command"})
 		}
 	})
 
 	router.Run(":8080")
-	myStore.StartCleanupLoop(10) // Cleans up the expired keys every 10 seconds
+	// myStore.StartCleanupLoop(10) // Cleans up the expired keys every 10 seconds
 }
