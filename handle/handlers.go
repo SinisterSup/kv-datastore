@@ -1,22 +1,20 @@
 package handle
 
 import (
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	// "time"
+	"errors"
 
 	"github.com/SinisterSup/kv-datastore/kvs"
-	"github.com/gin-gonic/gin"
 )
 
-func SetHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
+
+func SetHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
 	n := len(parts)
 
 	if n < 2 || n > 5 {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "invalid number of arguments for set"})
+		return "", true, errors.New("invalid number of arguments for set")
 	}
 
 	key, value := parts[0], parts[1]
@@ -24,104 +22,111 @@ func SetHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
 	switch {
 	case n == 2:
 		kvs.Set(key, value, 99999, "")
-		c.IndentedJSON(http.StatusOK, gin.H{"message": "value set for key " + key})
+		returnString := "value set for key: " + key
+		return returnString, true, nil
 	case n == 3:
 		hasSet := kvs.Set(key, value, 99999, parts[2])
 		if hasSet {
-			c.IndentedJSON(http.StatusOK, gin.H{"message": "value set for key " + key})
+			returnString := "value set for key: " + key
+			return returnString, true, nil
 		} else {
-			c.IndentedJSON(http.StatusConflict, gin.H{"message": "satisfies condition"})
+			returnString := "Already satisfies condition for NX or XX"
+			return returnString, false, nil
 		}
 	case n == 4:
 		if strings.EqualFold(parts[2], "EX") {
-			timeInt, _ := strconv.Atoi(parts[3])
+			timeInt, _ := strconv.Atoi(parts[3]) // Integer value of time
 			kvs.Set(key, value, timeInt, "")
-			c.IndentedJSON(http.StatusOK, gin.H{"message": "value set for key " + key})
+			returnString := "value set for key: " + key
+			return returnString, true, nil
 		} else {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid command"})
+			return "", false, errors.New("invalid command")
 		}
 	case n == 5:
 		if strings.EqualFold(parts[2], "EX") {
 			timeInt, _ := strconv.Atoi(parts[3])
 			hasSet := kvs.Set(key, value, timeInt, parts[4])
 			if hasSet {
-				c.IndentedJSON(http.StatusOK, gin.H{"message": "value set for key " + key})
+				returnString := "value set for key: " + key
+				return returnString, true, nil
 			} else {
-				c.IndentedJSON(http.StatusConflict, gin.H{"message": "satisfies condition"})
+				returnString := "Already satisfies condition for NX or XX"
+				return returnString, false, nil
 			}
 		} else {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid command"})
+			return "", false, errors.New("invalid command")
 		}
 	}
+	return "", false, errors.New("invalid command")
 }
 
-func GetHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
+func GetHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
 	n := len(parts)
 
 	if n != 1 {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "invalid number of arguments for get"})
+		return "", true, errors.New("invalid number of arguments for get")
 	}
 
 	key := parts[0]
 	val, ok := kvs.Get(key)
 	if !ok {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"error": "key not found"})
+		return "", false, errors.New("key not found")
 	} else {
-		c.IndentedJSON(http.StatusOK, gin.H{"value": val})
+		return val, true, nil
 	}
 }
 
-func QpushHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
+func QpushHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
 	n := len(parts)
 
 	if n < 2 {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "invalid number of arguments for qpush"})
+		return "", true, errors.New("invalid number of arguments for qpush")
 	}
 
 	key := parts[0]
 	values := parts[1:]
 
 	if err := kvs.Qpush(key, values); err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return "", false, err
 	} else {
-		c.IndentedJSON(http.StatusOK, gin.H{"message": "values pushed to queue"})
+		return "values pushed to queue", true, nil
 	}
 }
 
-func QpopHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
+func QpopHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
 	n := len(parts)
 
 	if n != 1 {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "invalid number of arguments for qpop"})
+		return "", true, errors.New("invalid number of arguments for qpop")
 	}
 
 	key := parts[0]
 	val, ok := kvs.Qpop(key)
 	if !ok {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"error": val})
+		return "", false, errors.New(val)
 	} else {
-		c.IndentedJSON(http.StatusOK, gin.H{"value": val})
+		return val, true, nil
 	}
 }
 
-func BqpopHandler(parts []string, kvs *kvs.KeyValueStore, c *gin.Context) {
+func BqpopHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
   n := len(parts)
 
   if n != 2 {
-    c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "invalid number of arguments for bqpop"})
+	return "", true, errors.New("invalid number of arguments for bqpop")
   }
 
   key := parts[0]
   t, err := strconv.ParseFloat(parts[1], 64)
   if err != nil {
-    c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid timeout request"})
+	return "", false, errors.New("invalid timeout request")
   }
   timeout := convFloatToTime(t)
   
   val := kvs.Bqpop(key, timeout)
-  c.IndentedJSON(http.StatusOK, gin.H{"value": val})
-
+  return val, true, nil
 }
+
 
 func convFloatToTime(t1 float64) (time.Duration) {
   timeout := time.Duration(t1) * time.Second
