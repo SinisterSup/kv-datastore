@@ -49,6 +49,18 @@ func TestSetAndGet(t *testing.T) {
 	}
 }
 
+func BenchmarkSetAndGet(b *testing.B) {
+	kvs := KeyValueStore{Store: make(map[string]*QueueChannel)}
+	key := "test_key"
+	value := "test_value"
+	expiration := 10
+
+	for i := 0; i < b.N; i++ {
+		kvs.Set(key, value, expiration, "")
+		kvs.Get(key)
+	}
+}
+
 func TestQueueOperations(t *testing.T) {
 	kvs := KeyValueStore{Store: make(map[string]*QueueChannel)}
 
@@ -118,4 +130,49 @@ func TestQueueOperations(t *testing.T) {
 	}()
 
 	<-doneChan
+}
+
+func BenchmarkQpush(b *testing.B) {
+    kvs := KeyValueStore{Store: make(map[string]*QueueChannel)}
+
+    key := "test_queue"
+    // Push values to the queue
+    values := []string{"value1", "value2", "value3"}
+    if err := kvs.Qpush(key, values); err != nil {
+        b.Errorf("Qpush() FAILED: to push values to the queue")
+    }
+}
+
+func BenchmarkQpop(b *testing.B) {
+    kvs := KeyValueStore{Store: make(map[string]*QueueChannel)}
+    key := "test_queue"
+    // Benchmark Qpop
+	for i := 0; i < b.N; i++ {	
+    	values := []string{"value1", "value2", "value3"}
+		if err := kvs.Qpush(key, values); err != nil {
+    	    b.Errorf("Qpush() FAILED: to push values to the queue")
+    	}
+
+		val, ok := kvs.Qpop(key)
+		if val != "value3" {
+			b.Errorf("Qpop() FAILED: couldn't pop the value from the queue")
+		}
+		if !ok {
+			b.Errorf("Qpop() FAILED: either the queue is empty or the key does not exist")
+		}
+	}
+}
+
+func BenchmarkBqpop(b *testing.B) {
+	kvs := KeyValueStore{Store: make(map[string]*QueueChannel)}
+
+	key := "test_queue"
+	values := []string{"value1", "value2", "value3"}
+	kvs.Qpush(key, values)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		kvs.Bqpop(key, time.Second)
+	}
 }
