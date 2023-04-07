@@ -57,7 +57,7 @@ func SetHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
 				return returnString, true, nil
 			} 
 			returnString := "Already satisfies condition for NX or XX"
-			return returnString, false, nil	
+			return returnString, false, nil 
 		}
 		return "", false, errors.New("invalid command")
 	}
