@@ -29,33 +29,37 @@ func SetHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
 		if hasSet {
 			returnString := "value set for key: " + key
 			return returnString, true, nil
-		} else {
-			returnString := "Already satisfies condition for NX or XX"
-			return returnString, false, nil
 		}
+		returnString := "Already satisfies condition for NX or XX"
+		return returnString, false, nil
+		
 	case n == 4:
 		if strings.EqualFold(parts[2], "EX") {
-			timeInt, _ := strconv.Atoi(parts[3]) // Integer value of time
+			timeInt, err := strconv.Atoi(parts[3]) // Integer value of time
+			if err != nil {
+				return "", false, errors.New("invalid time")
+			}
 			kvs.Set(key, value, timeInt, "")
 			returnString := "value set for key: " + key
 			return returnString, true, nil
-		} else {
-			return "", false, errors.New("invalid command")
-		}
+		} 
+		return "", false, errors.New("invalid command")
+		
 	case n == 5:
 		if strings.EqualFold(parts[2], "EX") {
-			timeInt, _ := strconv.Atoi(parts[3])
+			timeInt, err := strconv.Atoi(parts[3]) // Integer value of time
+			if err != nil {
+				return "", false, errors.New("invalid time")
+			} 
 			hasSet := kvs.Set(key, value, timeInt, parts[4])
 			if hasSet {
 				returnString := "value set for key: " + key
 				return returnString, true, nil
-			} else {
-				returnString := "Already satisfies condition for NX or XX"
-				return returnString, false, nil
-			}
-		} else {
-			return "", false, errors.New("invalid command")
+			} 
+			returnString := "Already satisfies condition for NX or XX"
+			return returnString, false, nil	
 		}
+		return "", false, errors.New("invalid command")
 	}
 	return "", false, errors.New("invalid command")
 }
@@ -71,9 +75,8 @@ func GetHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
 	val, ok := kvs.Get(key)
 	if !ok {
 		return "", false, errors.New("key not found")
-	} else {
-		return val, true, nil
-	}
+	} 
+	return val, true, nil
 }
 
 func QpushHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
@@ -88,9 +91,8 @@ func QpushHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) 
 
 	if err := kvs.Qpush(key, values); err != nil {
 		return "", false, err
-	} else {
-		return "values pushed to queue", true, nil
 	}
+	return "values pushed to queue", true, nil
 }
 
 func QpopHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
@@ -104,9 +106,8 @@ func QpopHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
 	val, ok := kvs.Qpop(key)
 	if !ok {
 		return "", false, errors.New(val)
-	} else {
-		return val, true, nil
 	}
+	return val, true, nil
 }
 
 func BqpopHandler(parts []string, kvs *kvs.KeyValueStore) (string, bool, error) {
