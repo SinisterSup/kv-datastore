@@ -128,6 +128,15 @@ func TestSetHandler(t *testing.T) {
     }
 }
 
+func BenchmarkSetHandler(b *testing.B) {
+    kvs := &kvs.KeyValueStore{Store: make(map[string]*kvs.QueueChannel)}
+    parts := []string{"benchmark_key", "benchmark_value"}
+
+    for i := 0; i < b.N; i++ {
+        _, _, _ = handle.SetHandler(parts, kvs)
+    }
+}
+
 func TestGetHandler(t *testing.T) {
     s := &kvs.KeyValueStore{Store: make(map[string]*kvs.QueueChannel)}
     s.Set("key", "value", 9999, "")
@@ -170,6 +179,50 @@ func TestGetHandler(t *testing.T) {
     }
 }
 
+func BenchmarkGetHandler(b *testing.B) {
+    s := &kvs.KeyValueStore{Store: make(map[string]*kvs.QueueChannel)}
+    s.Set("key", "value", 9999, "")
+    tests := []struct {
+        name     string
+        parts    []string
+        expected string
+        done     bool
+        err      error
+    }{
+        {
+            name: "Invalid args",
+            parts: []string{"key", "value", "NA"},
+            expected: "",
+            done: true,
+            err: errors.New("invalid number of arguments for get"),
+        },
+        {
+            name: "valid Key",
+            parts: []string{"key"},
+            expected: "value",
+            done: true,
+            err: nil,
+        },
+        {
+            name: "Unknown Key",
+            parts: []string{"Unknown"},
+            expected: "",
+            done: false,
+            err: errors.New("key not found"),
+        },
+    }
+    for i := 0; i < b.N; i++ {
+        for _, test := range tests {
+            b.Run(test.name, func(b *testing.B) {
+                actual, done, err := handle.GetHandler(test.parts, s)
+                if actual != test.expected || done != test.done || (err != nil && test.err != nil && err.Error() != test.err.Error()) {
+                    b.Errorf("Expected: %v, %v, %v, but Got: %v, %v, %v", test.expected, test.done, test.err, actual, done, err)
+                }
+            })
+        }
+    }
+}
+
 func TestQpushHandler(t *testing.T) {
     s := &kvs.KeyValueStore{Store: make(map[string]*kvs.QueueChannel)}
     tests := []struct {
@@ -201,6 +254,14 @@ func TestQpushHandler(t *testing.T) {
                 t.Errorf("Expected: %v, %v, %v, but Got: %v, %v, %v", test.expected, test.done, test.err, actual, done, err)
             }
         })
+    }
+}
+
+func BenchmarkQpushHandler(b *testing.B) {
+    s := &kvs.KeyValueStore{Store: make(map[string]*kvs.QueueChannel)}
+    parts := []string{"key", "value1", "value2", "value3"}
+    for i := 0; i < b.N; i++ {
+        _, _, _ = handle.QpushHandler(parts, s)
     }
 }
 
@@ -263,6 +324,19 @@ func TestQpopHandler(t *testing.T) {
                 t.Errorf("Expected: %v, %v, %v, but Got: %v, %v, %v", test.expected, test.done, test.err, actual, done, err)
             }
         })
+    }
+}
+
+func BenchmarkQpopHandler(b *testing.B) {
+    s := &kvs.KeyValueStore{Store: make(map[string]*kvs.QueueChannel)}
+
+    someErr := s.Qpush("key", []string{"value1", "value2"})
+    if someErr != nil {
+        b.Errorf("Error while pushing values to queue")
+    }
+
+    for i := 0; i < b.N; i++ {
+        _, _, _ = handle.QpopHandler([]string{"key"}, s)
     }
 }
 
@@ -348,4 +422,13 @@ func TestBqpopHandler(t *testing.T) {
     //     wg.Done()
     // }()
     // wg.Wait()
+}
+
+func BenchmarkBqpopHandler(b *testing.B) {
+    s := &kvs.KeyValueStore{Store: make(map[string]*kvs.QueueChannel)}
+    s.Qpush("key", []string{"value1", "value2"})
+
+    for i := 0; i < b.N; i++ {
+        _, _, _ = handle.BqpopHandler([]string{"key", "0"}, s)
+    }
 }
